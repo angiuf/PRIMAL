@@ -133,24 +133,16 @@ if __name__ == "__main__":
     primal=PRIMAL('model_primal',10)
     num_agents = 2
 
-#    while num_agents < 1024:
-#        num_agents *= 2
-#
-#        print("Starting tests for %d agents" % num_agents)
-#        for size in [10,20,40,80,160]:
-#            if size==10 and num_agents>32:continue
-#            if size==20 and num_agents>128:continue
-#            if size==40 and num_agents>512:continue
-#            for density in [0,.1,.2,.3]:
-#                for iter in range(100):
-#                    run_simulations((num_agents,size,density,iter),primal)
-    
-    num_agents = 4
-    size = 10
-    density = .3
-    print("Starting tests for %d agents" % num_agents)
-    for iter in range(5):
-        print("Starting test %d" % iter)
-        run_simulations((num_agents,size,density,iter),primal)
+    while num_agents < 1024:
+        num_agents *= 2
+
+        print("Starting tests for %d agents" % num_agents)
+        for size in [10,20,40,80,160]:
+            if size==10 and num_agents>32:continue
+            if size==20 and num_agents>128:continue
+            if size==40 and num_agents>512:continue
+            for density in [0,.1,.2,.3]:
+                for iter in range(100):
+                    run_simulations((num_agents,size,density,iter),primal)
 
 print("finished all tests!")

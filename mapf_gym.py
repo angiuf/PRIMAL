@@ -10,7 +10,7 @@ import math
 import copy
 from od_mstar3 import cpp_mstar
 from od_mstar3.col_set_addition import NoSolutionError, OutOfTimeError
-# from gym.envs.classic_control import rendering        
+from gym.envs.classic_control import rendering        
 
 '''
     Observation: (position maps of current agent, current goal, other agents, other goals, obstacles)

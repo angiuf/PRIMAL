@@ -10,7 +10,7 @@ import math
 import copy
 from od_mstar3 import cpp_mstar
 from od_mstar3.col_set_addition import NoSolutionError, OutOfTimeError
-# from gym.envs.classic_control import rendering        
+from gym.envs.classic_control import rendering        
 
 '''
     Observation: (position maps of current agent, current goal, other agents, other goals, obstacles)
@@ -759,6 +759,186 @@ class MAPFEnv(gym.Env):
         self.reset_renderer=False
         result=self.viewer.render(return_rgb_array = mode=='rgb_array')
         return result
+
+class WarehouseEnv(MAPFEnv):
+    def __init__(self, num_agents=1, observation_size=10, world0=None, goals0=None, open_list=None, DIAGONAL_MOVEMENT=False, SIZE=15, FULL_HELP=False,blank_world=False):
+        """
+        Args:
+            DIAGONAL_MOVEMENT: if the agents are allowed to move diagonally
+            SIZE: size of a side of the square grid
+            PROB: range of probabilities that a given block is an obstacle
+            FULL_HELP
+        """
+        # Initialize member variables
+        self.num_agents        = num_agents 
+        #a way of doing joint rewards
+        self.individual_rewards           = [0 for i in range(num_agents)]
+        self.observation_size  = observation_size
+        self.SIZE              = SIZE
+        self.fresh             = True
+        self.FULL_HELP         = FULL_HELP
+        self.finished          = False
+        self.mutex             = Lock()
+        self.DIAGONAL_MOVEMENT = DIAGONAL_MOVEMENT
+
+        # Initialize data structures
+        self._setWorld(world0,goals0,open_list,blank_world=blank_world)
+        if DIAGONAL_MOVEMENT:
+            self.action_space = spaces.Tuple([spaces.Discrete(self.num_agents), spaces.Discrete(9)])
+        else:
+            self.action_space = spaces.Tuple([spaces.Discrete(self.num_agents), spaces.Discrete(5)])
+        self.viewer           = None
+
+    def _setWorld(self, world0=None, goals0=None, open_list=None, blank_world=False):
+        #blank_world is a flag indicating that the world given has no agent or goal positions 
+        
+        #defines the State object, which includes initializing goals and agents
+        #sets the world to world0 and goals, or if they are None randomizes world
+        if not (world0 is None):
+            if goals0 is None and not blank_world:
+                raise Exception("you gave a world with no goals!")
+            if blank_world and open_list is None:
+                raise Exception("you gave a blank world with no open list!")
+            if blank_world:
+                #RANDOMIZE THE POSITIONS OF AGENTS
+                agent_counter = 1
+                agent_locations=[]
+                while agent_counter<=self.num_agents:
+                    agent_rand_pos = random.choice(open_list)
+                    open_list.remove(agent_rand_pos)
+                    x = agent_rand_pos[0]
+                    y = agent_rand_pos[1]
+                    if(world0[x,y] == 0):
+                        world0[x,y]=agent_counter
+                        agent_locations.append((x,y))
+                        agent_counter += 1   
+                #RANDOMIZE THE GOALS OF AGENTS
+                goals0 = np.zeros(world0.shape).astype(int)
+                goal_counter = 1
+                while goal_counter<=self.num_agents:
+                    goal_rand_pos = random.choice(open_list)
+                    open_list.remove(goal_rand_pos)
+                    x = goal_rand_pos[0]
+                    y = goal_rand_pos[1]
+                    if(goals0[x,y]==0 and world0[x,y]!=-1):
+                        goals0[x,y]    = goal_counter
+                        goal_counter += 1
+                self.initial_world = world0.copy()
+                self.initial_goals = goals0.copy()
+                self.world = State(self.initial_world,self.initial_goals,self.DIAGONAL_MOVEMENT,self.num_agents)
+                return
+            self.initial_world = world0
+            self.initial_goals = goals0
+            self.world = State(world0,goals0,self.DIAGONAL_MOVEMENT,self.num_agents)
+            return
+
+        #otherwise we have to randomize the world
+        #RANDOMIZE THE STATIC OBSTACLES
+        size=self.SIZE
+        world = self.get_warehouse_obs()
+
+        open_list = self.get_open_list()
+
+        # Error if n_agents > len(open_list)
+        if self.num_agents > len(open_list)/2:
+            raise ValueError(f"n_agents %d must be less than or equal to the available pairs of start/goal positions %d" % (self.num_agents, len(open_list)/2))
+
+        #RANDOMIZE THE POSITIONS OF AGENTS
+        agent_counter = 1
+        agent_locations=[]
+        while agent_counter<=self.num_agents:
+            agent_rand_pos = random.choice(open_list)
+            open_list.remove(agent_rand_pos)
+            x = agent_rand_pos[0]
+            y = agent_rand_pos[1]
+            if(world[x,y] == 0):
+                world[x,y]=agent_counter
+                agent_locations.append((x,y))
+                agent_counter += 1        
+        
+        #RANDOMIZE THE GOALS OF AGENTS
+        goals = np.zeros(world.shape).astype(int)
+        goal_counter = 1   
+        while goal_counter<=self.num_agents:
+            goal_rand_pos = random.choice(open_list)
+            open_list.remove(goal_rand_pos)
+            x = goal_rand_pos[0]
+            y = goal_rand_pos[1]
+            if(goals[x,y]==0 and world[x,y]!=-1):
+                goals[x,y]    = goal_counter
+                goal_counter += 1
+        self.initial_world = world
+        self.initial_goals = goals
+        self.world = State(world,goals,self.DIAGONAL_MOVEMENT,num_agents=self.num_agents)
+
+
+    
+    def get_warehouse_obs(self):
+        return np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
+                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        ])
+
+    def get_open_list(self):    
+        open_list = [[3, 0],
+                    [4, 0],
+                    [5, 0],
+                    [6, 0],
+                    [7, 0],
+                    [8, 0],
+                    [9, 0],
+                    [10, 0],
+                    [11, 0],
+                    [12, 0], 
+                    [3, 14],
+                    [4, 14],
+                    [5, 14],
+                    [6, 14],
+                    [7, 14],
+                    [8, 14],
+                    [9, 14],
+                    [10, 14],
+                    [11, 14],
+                    [12, 14],
+                    [2, 4],
+                    [2, 6],
+                    [2, 8],
+                    [2, 10],
+                    [4, 4],
+                    [4, 6],
+                    [4, 8],
+                    [4, 10],
+                    [6, 4],
+                    [6, 6],
+                    [6, 8],
+                    [6, 10],
+                    [8, 4],
+                    [8, 6],
+                    [8, 8],
+                    [8, 10],
+                    [10, 4],
+                    [10, 6],
+                    [10, 8],
+                    [10, 10],
+                    [12, 4],
+                    [12, 6],
+                    [12, 8],
+                    [12, 10]]
+        
+        return open_list
+
 
 if __name__=='__main__':
     n_agents=8
