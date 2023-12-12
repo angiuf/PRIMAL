@@ -70,6 +70,9 @@ if __name__ == "__main__":
     warehouse_env = get_warehouse_obs()
     open_list = get_open_list()
 
+    obs_density = warehouse_env.flatten().tolist().count(-1) / len(warehouse_env.flatten())
+    print('obs_density: ', obs_density)
+
     np.save('simple_warehouse_env.npy', [warehouse_env, open_list], allow_pickle=True)
     env, ol = np.load ('simple_warehouse_env.npy', allow_pickle=True)
 
