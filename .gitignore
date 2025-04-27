@@ -93,3 +93,5 @@ od_mstar3/build
 od_mstar3/__pycache__/
 RAL2018-results-graphs/
 saved_environments/
+
+.venv
