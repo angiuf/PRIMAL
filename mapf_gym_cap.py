@@ -761,7 +761,7 @@ class MAPFEnv(gym.Env):
         return result
 
 class WarehouseEnv(MAPFEnv):
-    def __init__(self, num_agents=1, observation_size=10, world0=None, goals0=None, open_list=None, DIAGONAL_MOVEMENT=False, SIZE=15, FULL_HELP=False,blank_world=False):
+    def __init__(self, num_agents=1, observation_size=10, world0=None, goals0=None, open_list=None, DIAGONAL_MOVEMENT=False, FULL_HELP=False,blank_world=False):
         """
         Args:
             DIAGONAL_MOVEMENT: if the agents are allowed to move diagonally
@@ -774,7 +774,6 @@ class WarehouseEnv(MAPFEnv):
         #a way of doing joint rewards
         self.individual_rewards           = [0 for i in range(num_agents)]
         self.observation_size  = observation_size
-        self.SIZE              = SIZE
         self.fresh             = True
         self.FULL_HELP         = FULL_HELP
         self.finished          = False
@@ -871,76 +870,6 @@ class WarehouseEnv(MAPFEnv):
         self.initial_goals = goals
         self.world = State(world,goals,self.DIAGONAL_MOVEMENT,num_agents=self.num_agents)
 
-
-    
-    def get_warehouse_obs(self):
-        return np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0],
-                        [0, 0, 0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                        ])
-
-    def get_open_list(self):    
-        open_list = [[3, 0],
-                    [4, 0],
-                    [5, 0],
-                    [6, 0],
-                    [7, 0],
-                    [8, 0],
-                    [9, 0],
-                    [10, 0],
-                    [11, 0],
-                    [12, 0], 
-                    [3, 14],
-                    [4, 14],
-                    [5, 14],
-                    [6, 14],
-                    [7, 14],
-                    [8, 14],
-                    [9, 14],
-                    [10, 14],
-                    [11, 14],
-                    [12, 14],
-                    [2, 4],
-                    [2, 6],
-                    [2, 8],
-                    [2, 10],
-                    [4, 4],
-                    [4, 6],
-                    [4, 8],
-                    [4, 10],
-                    [6, 4],
-                    [6, 6],
-                    [6, 8],
-                    [6, 10],
-                    [8, 4],
-                    [8, 6],
-                    [8, 8],
-                    [8, 10],
-                    [10, 4],
-                    [10, 6],
-                    [10, 8],
-                    [10, 10],
-                    [12, 4],
-                    [12, 6],
-                    [12, 8],
-                    [12, 10]]
-        
-        return open_list
-
-
 if __name__=='__main__':
     n_agents=8
     env=MAPFEnv(n_agents,PROB=(.3,.5),SIZE=(10,11),DIAGONAL_MOVEMENT=False)
-    print(coordinationRatio(env))
